@@ -1,0 +1,39 @@
+import nmap
+from elasticsearch import Elasticsearch
+import json
+
+# Function to perform network scan using Nmap
+def perform_scan(targets, options):
+    nm = nmap.PortScanner()
+    nm.scan(hosts=targets, arguments=options)
+    return nm.all_hosts(), nm.csv()
+
+# Function to index scan results into Elastic SIEM
+def index_scan_results(scan_results):
+    es = Elasticsearch(['http://localhost:9200'])  # Elasticsearch URL
+    index_name = 'nmap_scan_results'  # Elasticsearch index name
+    for host, data in scan_results.items():
+        doc = {
+            'host': host,
+            'scan_results': data
+        }
+        es.index(index=index_name, body=doc)
+    print("Scan results indexed successfully.")
+
+# Main function
+def main():
+    # Perform network scan
+    targets = '192.168.1.0/24'  # Example target range
+    options = '-p 1-1000'  # Example Nmap options
+    hosts, results = perform_scan(targets, options)
+
+    # Convert Nmap scan results to dictionary format
+    scan_results = {}
+    for host in hosts:
+        scan_results[host] = results[host]
+
+    # Index scan results into Elastic SIEM
+    index_scan_results(scan_results)
+
+if __name__ == "__main__":
+    main()
